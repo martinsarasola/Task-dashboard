@@ -31,12 +31,12 @@ Para ejecutar este proyecto de forma local, sigue estos pasos:
 
 1.  **Clona el repositorio:**
     ```bash
-    git clone https://github.com/tu-usuario/tu-repositorio.git
+    git clone https://github.com/martinsarasola/Task-dashboard
     ```
 
 2.  **Navega al directorio del proyecto:**
     ```bash
-    cd tu-repositorio
+    cd task-dashboard
     ```
 
 3.  **Instala las dependencias:**
