@@ -2,26 +2,18 @@
 
 import React, { useState, useMemo } from "react";
 import { ApolloProvider, useQuery, useMutation } from "@apollo/client";
-// IMPORTAMOS TODO LO QUE NECESITAMOS, INCLUYENDO LA NUEVA MUTACIÓN
 import {
   client,
   Task,
   LIST_TASKS_QUERY,
   ADD_TASK_MUTATION,
   UPDATE_TASK_MUTATION,
+  DELETE_TASK_MUTATION,
 } from "../lib/apollo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Archive } from "lucide-react";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Archive, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 function TaskManager() {
   const { data, loading, error, refetch } = useQuery<{ listTasks: Task[] }>(
@@ -35,21 +27,35 @@ function TaskManager() {
     },
   });
 
-  // ==================================================================
-  // PASO 1: PREPARAMOS LA MUTACIÓN DE ACTUALIZACIÓN
-  // ==================================================================
   const [updateTask] = useMutation(UPDATE_TASK_MUTATION, {
-    // ESTA ES LA ACTUALIZACIÓN OPTIMISTA. ¡MUY IMPORTANTE!
     optimisticResponse: (variables) => {
-      // Creamos una "respuesta falsa" que Apollo usará inmediatamente.
       return {
         updateTask: {
-          __typename: "Task", // Necesario para que Apollo sepa qué tipo de objeto es
+          __typename: "Task",
           id: variables.id,
           name: variables.name,
           completed: variables.completed,
         },
       };
+    },
+  });
+
+  const [deleteTask] = useMutation(DELETE_TASK_MUTATION, {
+    update(cache, { data: { deleteTask: deletedTask } }) {
+      const existingTasksData = cache.readQuery<{ listTasks: Task[] }>({
+        query: LIST_TASKS_QUERY,
+      });
+
+      if (existingTasksData) {
+        const newTasks = existingTasksData.listTasks.filter(
+          (task) => task.id !== deletedTask.id
+        );
+
+        cache.writeQuery({
+          query: LIST_TASKS_QUERY,
+          data: { listTasks: newTasks },
+        });
+      }
     },
   });
 
@@ -75,16 +81,24 @@ function TaskManager() {
     }
   };
 
-  // ==================================================================
-  // PASO 2: CREAMOS LA FUNCIÓN QUE MANEJA EL CLIC
-  // ==================================================================
   const handleToggleTask = (task: Task) => {
-    // Llamamos a la mutación `updateTask` con las variables correctas
     updateTask({
       variables: {
         id: task.id,
-        name: task.name, // El nombre no cambia, pero es un campo obligatorio en nuestra mutación
-        completed: !task.completed, // Invertimos el estado actual de "completed"
+        name: task.name,
+        completed: !task.completed,
+      },
+    });
+  };
+
+  const handleDeleteTask = (id: string) => {
+    deleteTask({
+      variables: { id },
+      optimisticResponse: {
+        deleteTask: {
+          __typename: "Task",
+          id: id,
+        },
       },
     });
   };
@@ -129,21 +143,27 @@ function TaskManager() {
             <h2>Tareas Pendientes:</h2>
             <ul>
               {sortedTasks.map((task) => (
-                // ==================================================================
-                // PASO 3: CONECTAMOS LA FUNCIÓN AL EVENTO ONCLICK DEL ELEMENTO
-                // ==================================================================
                 <li
                   key={task.id}
-                  onClick={() => handleToggleTask(task)} // ¡Aquí está la magia!
-                  style={{
-                    cursor: "pointer", // Cambiamos el cursor para que parezca clickeable
-                    textDecoration: task.completed ? "line-through" : "none", // Tachamos si está completada
-                    color: task.completed ? "grey" : "black", // Cambiamos el color si está completada
-                    padding: "5px",
-                    borderBottom: "1px solid #eee",
-                  }}
+                  onClick={() => handleToggleTask(task)}
+                  className={`
+                  cursor-pointer border-b border-[#eee] p-[5px] flex flex-row justify-between
+                  ${
+                    task.completed ? "line-through text-gray-500" : "text-black"
+                  }
+                `}
                 >
                   {task.name}
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTask(task.id);
+                    }}
+                    variant="ghost"
+                    className=""
+                  >
+                    <Trash2 className="h-5 w-5 text-destructive"></Trash2>
+                  </Button>
                 </li>
               ))}
             </ul>
