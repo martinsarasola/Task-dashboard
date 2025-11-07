@@ -9,10 +9,11 @@ import {
   LIST_TASKS_QUERY,
   ADD_TASK_MUTATION,
   UPDATE_TASK_MUTATION,
+  DELETE_TASK_MUTATION,
 } from "../lib/apollo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Archive } from "lucide-react";
+import { Archive, Trash2 } from "lucide-react";
 import {
   Card,
   CardAction,
@@ -53,6 +54,29 @@ function TaskManager() {
     },
   });
 
+  const [deleteTask] = useMutation(DELETE_TASK_MUTATION, {
+    // ESTA VEZ USAREMOS LA FUNCIÓN `update` PARA MANIPULAR EL CACHÉ MANUALMENTE
+    update(cache, { data: { deleteTask: deletedTask } }) {
+      // 1. Leemos la query actual de la lista de tareas desde el caché
+      const existingTasksData = cache.readQuery<{ listTasks: Task[] }>({
+        query: LIST_TASKS_QUERY,
+      });
+
+      if (existingTasksData) {
+        // 2. Filtramos la lista, eliminando la tarea cuyo ID coincide con la que borramos
+        const newTasks = existingTasksData.listTasks.filter(
+          (task) => task.id !== deletedTask.id
+        );
+
+        // 3. Escribimos la nueva lista (ya sin la tarea borrada) de vuelta en el caché
+        cache.writeQuery({
+          query: LIST_TASKS_QUERY,
+          data: { listTasks: newTasks },
+        });
+      }
+    },
+  });
+
   const sortedTasks = useMemo(() => {
     if (!data?.listTasks) return [];
     const tasksToSort = [...data.listTasks];
@@ -85,6 +109,20 @@ function TaskManager() {
         id: task.id,
         name: task.name, // El nombre no cambia, pero es un campo obligatorio en nuestra mutación
         completed: !task.completed, // Invertimos el estado actual de "completed"
+      },
+    });
+  };
+
+  const handleDeleteTask = (id: string) => {
+    // Llamamos a la mutación `deleteTask` con el ID de la tarea
+    deleteTask({
+      variables: { id },
+      // TAMBIÉN PODEMOS HACER UNA ACTUALIZACIÓN OPTIMISTA AQUÍ
+      optimisticResponse: {
+        deleteTask: {
+          __typename: "Task",
+          id: id,
+        },
       },
     });
   };
@@ -134,16 +172,25 @@ function TaskManager() {
                 // ==================================================================
                 <li
                   key={task.id}
-                  onClick={() => handleToggleTask(task)} // ¡Aquí está la magia!
-                  style={{
-                    cursor: "pointer", // Cambiamos el cursor para que parezca clickeable
-                    textDecoration: task.completed ? "line-through" : "none", // Tachamos si está completada
-                    color: task.completed ? "grey" : "black", // Cambiamos el color si está completada
-                    padding: "5px",
-                    borderBottom: "1px solid #eee",
-                  }}
+                  onClick={() => handleToggleTask(task)}
+                  className={`
+                  cursor-pointer border-b border-[#eee] p-[5px] flex flex-row justify-between
+                  ${
+                    task.completed ? "line-through text-gray-500" : "text-black"
+                  }
+                `}
                 >
                   {task.name}
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTask(task.id);
+                    }}
+                    variant="ghost"
+                    className=""
+                  >
+                    <Trash2 className="h-5 w-5 text-destructive"></Trash2>
+                  </Button>
                 </li>
               ))}
             </ul>
