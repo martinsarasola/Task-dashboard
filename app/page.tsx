@@ -115,7 +115,7 @@ function TaskManager() {
 
   return (
     <div className="w-full min-h-screen bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[16px_16px] py-12">
-      <div className="max-w-[500px] my-5 mx-5 md:mx-auto ">
+      <div className="max-w-[500px] my-5 mx-5 sm:mx-auto text-center px-2">
         <Card className="font-sans">
           <CardHeader>
             <h1 className="text-4xl font-bold text-center">
@@ -134,7 +134,7 @@ function TaskManager() {
                 placeholder="Nueva tarea..."
                 className="bg-white basis-3/4"
               />
-              <Button type="submit" className="basis-1/4 cursor-pointer">
+              <Button type="submit" className="md:basis-1/4 cursor-pointer">
                 <Archive className="w-4 me-2 opacity-60"></Archive>
                 Agregar
               </Button>
